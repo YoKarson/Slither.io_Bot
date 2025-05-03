@@ -42,17 +42,68 @@ try:
         """
         driver.execute_script(script)
 
+    def get_snake_and_foods():
+        """
+        Returns the snake's position and a list of food positions from the game.
+        """
+        script = """
+        if (window.snake && window.foods) {
+            let snake_x = window.snake.xx;
+            let snake_y = window.snake.yy;
+            let foods = [];
+            for (let i = 0; i < window.foods.length; i++) {
+                let f = window.foods[i];
+                if (f && f.xx !== undefined && f.yy !== undefined) {
+                    foods.push({x: f.xx, y: f.yy});
+                }
+            }
+            return {snake: {x: snake_x, y: snake_y}, foods: foods};
+        } else {
+            return null;
+        }
+        """
+        return driver.execute_script(script)
+
+    def move_toward_closest_food():
+        script = """
+        // Get your snake (slither) and all foods
+        let snake = window.slither;
+        let foods = window.foods || [];
+        let snake_x = snake && snake.xx;
+        let snake_y = snake && snake.yy;
+
+        // Find the closest food
+        let min_dist = Infinity;
+        let target = null;
+        for (let i = 0; i < foods.length; i++) {
+            let f = foods[i];
+            if (f && f.xx !== undefined && f.yy !== undefined) {
+                let dist = Math.sqrt(Math.pow(f.xx - snake_x, 2) + Math.pow(f.yy - snake_y, 2));
+                if (dist < min_dist) {
+                    min_dist = dist;
+                    target = f;
+                }
+            }
+        }
+
+        // Move toward the closest food
+        if (target) {
+            let dx = target.xx - snake_x;
+            let dy = target.yy - snake_y;
+            window.xm = dx;
+            window.ym = dy;
+            return {snake: {x: snake_x, y: snake_y}, target: {x: target.xx, y: target.yy}, vector: {dx: dx, dy: dy}};
+        } else {
+            return {snake: {x: snake_x, y: snake_y}, target: null};
+        }
+        """
+        result = driver.execute_script(script)
+        print(result)  # For debugging: shows where the snake is moving
+
     try:
-        # (100,0)   -> move right
-        # (0,100)   -> move down
-        # (-100,0)  -> move left
-        # (0,-100)  -> move up
-        square_pattern = [(400, 0), (0, 400), (-400, 0), (0, -400)]
-        
         while True:
-            for x, y in square_pattern:
-                move_snake(x, y)
-                time.sleep(0.5)
+            move_toward_closest_food()
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
         # This catches when user presses Ctrl+C to stop the program
