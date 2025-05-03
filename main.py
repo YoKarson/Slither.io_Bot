@@ -66,39 +66,55 @@ try:
 
     def move_toward_closest_food():
         script = """
-        // Get your snake (slither) and all foods
         let snake = window.slither;
         let foods = window.foods || [];
         let snake_x = snake && snake.xx;
         let snake_y = snake && snake.yy;
+        let snake_ang = snake && snake.ang;
 
-        // Find the closest food
+        let min_target_dist = 30; // Increase this if needed
         let min_dist = Infinity;
         let target = null;
+
+        function angleDiff(a, b) {
+            let diff = a - b;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            return Math.abs(diff);
+        }
+
         for (let i = 0; i < foods.length; i++) {
             let f = foods[i];
             if (f && f.xx !== undefined && f.yy !== undefined) {
-                let dist = Math.sqrt(Math.pow(f.xx - snake_x, 2) + Math.pow(f.yy - snake_y, 2));
-                if (dist < min_dist) {
-                    min_dist = dist;
-                    target = f;
+                let dx = f.xx - snake_x;
+                let dy = f.yy - snake_y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > min_target_dist) {
+                    let food_ang = Math.atan2(dy, dx);
+                    if (angleDiff(food_ang, snake_ang) < Math.PI / 2) { // within 90 degrees of heading
+                        if (dist < min_dist) {
+                            min_dist = dist;
+                            target = f;
+                        }
+                    }
                 }
             }
         }
 
-        // Move toward the closest food
         if (target) {
             let dx = target.xx - snake_x;
             let dy = target.yy - snake_y;
             window.xm = dx;
             window.ym = dy;
-            return {snake: {x: snake_x, y: snake_y}, target: {x: target.xx, y: target.yy}, vector: {dx: dx, dy: dy}};
+            return {snake: {x: snake_x, y: snake_y, ang: snake_ang}, target: {x: target.xx, y: target.yy}, vector: {dx: dx, dy: dy}};
         } else {
-            return {snake: {x: snake_x, y: snake_y}, target: null};
+            window.xm = 0;
+            window.ym = 0;
+            return {snake: {x: snake_x, y: snake_y, ang: snake_ang}, target: null};
         }
         """
         result = driver.execute_script(script)
-        print(result)  # For debugging: shows where the snake is moving
+        print(result)
 
     try:
         while True:
