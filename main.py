@@ -30,17 +30,107 @@ try:
     # Wait for game to start
     time.sleep(2)
 
-    def move_snake(x, y):
+    def move_greedy_avoid_snakes():
+        script = """
+        let mySnake = window.slither;
+        let foods = window.foods || [];
+        let allSnakes = window.slithers || [];
+        let attraction = {x: 0, y: 0};
+        let repulsion = {x: 0, y: 0};
+        let myX = mySnake && mySnake.xx, myY = mySnake && mySnake.yy;
+
+        // Parameters
+        let dangerRadius = 200;
+        let repulsionFactor = 1000;
+        let panicRadius = 80; // Panic if enemy is this close
+        let ignoreRadius = 300; // Ignore enemies farther than this
+
+        // Attraction to food
+        for (let i = 0; i < foods.length; i++) {
+            let f = foods[i];
+            if (f && f.xx !== undefined && f.yy !== undefined) {
+                let dx = f.xx - myX;
+                let dy = f.yy - myY;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let weight = 1 / (dist + 1e-5);
+                attraction.x += dx * weight;
+                attraction.y += dy * weight;
+            }
+        }
+
+        // Repulsion from enemy snake segments & find nearest
+        let minEnemyDist = Infinity;
+        for (let i = 0; i < allSnakes.length; i++) {
+            let s = allSnakes[i];
+            if (s && s !== mySnake && s.pts) {
+                for (let j = 0; j < s.pts.length; j++) {
+                    let pt = s.pts[j];
+                    if (pt && pt.xx !== undefined && pt.yy !== undefined) {
+                        let dx = myX - pt.xx;
+                        let dy = myY - pt.yy;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < dangerRadius) {
+                            let weight = repulsionFactor / (dist + 1e-5);
+                            repulsion.x += dx * weight;
+                            repulsion.y += dy * weight;
+                        }
+                        if (dist < minEnemyDist) {
+                            minEnemyDist = dist;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If the closest enemy is far away, ignore repulsion
+        if (minEnemyDist > ignoreRadius) {
+            repulsion.x = 0;
+            repulsion.y = 0;
+        }
+
+        // Combine attraction and repulsion
+        let moveX = attraction.x + repulsion.x;
+        let moveY = attraction.y + repulsion.y;
+
+        // Normalize movement vector to avoid excessive speed
+        let mag = Math.sqrt(moveX*moveX + moveY*moveY);
+        if (mag > 0) {
+            moveX = moveX / mag * 100;
+            moveY = moveY / mag * 100;
+        }
+
+        window.xm = moveX;
+        window.ym = moveY;
+
+        // Speed boost if enemy is very close
+        if (minEnemyDist < panicRadius) {
+            if (typeof window.setAcceleration === "function") {
+                window.setAcceleration(1);
+            }
+            if (!window._spaceHeld) {
+                window._spaceHeld = true;
+                document.body.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 32}));
+            }
+        } else {
+            if (typeof window.setAcceleration === "function") {
+                window.setAcceleration(0);
+            }
+            if (window._spaceHeld) {
+                window._spaceHeld = false;
+                document.body.dispatchEvent(new KeyboardEvent('keyup', {keyCode: 32}));
+            }
+        }
+
+        console.log("Nearest enemy distance:", minEnemyDist);
+
+        return {
+            move: {x: moveX, y: moveY},
+            attraction: attraction,
+            repulsion: repulsion,
+            minEnemyDist: minEnemyDist
+        };
         """
-        Move the snake by setting the game's internal xm and ym variables
-        x, y: coordinates relative to the center of the screen
-        """
-        # Update the game's mouse position variables
-        script = f"""
-        window.xm = {x};
-        window.ym = {y};
-        """
-        driver.execute_script(script)
+        return driver.execute_script(script)
 
     def get_snake_and_foods():
         """
@@ -114,11 +204,36 @@ try:
         }
         """
         result = driver.execute_script(script)
-        print(result)
+
+    def log_enemy_snake_positions():
+        script = """
+        // Get all snakes except the player's own
+        let allSnakes = window.slithers || [];
+        let mySnake = window.slither;
+        let enemies = [];
+        for (let i = 0; i < allSnakes.length; i++) {
+            let s = allSnakes[i];
+            if (s && s !== mySnake && s.pts && s.pts.length > 0) {
+                // Collect all segment positions for this snake
+                let segments = [];
+                for (let j = 0; j < s.pts.length; j++) {
+                    let pt = s.pts[j];
+                    if (pt && pt.xx !== undefined && pt.yy !== undefined) {
+                        segments.push({x: pt.xx, y: pt.yy});
+                    }
+                }
+                enemies.push({id: i, segments: segments});
+            }
+        }
+        console.log("Enemy snakes:", enemies); // For debugging
+        return enemies;
+        """
+        return driver.execute_script(script)
 
     try:
         while True:
-            move_toward_closest_food()
+            result = move_greedy_avoid_snakes()
+            print("Nearest enemy distance:", result.get("minEnemyDist"))
             time.sleep(0.1)
 
     except KeyboardInterrupt:
