@@ -456,7 +456,16 @@ try:
         # --- Lifespan calculation ---
         life_end_time = time.time()
         lifespan = life_end_time - life_start_time
-        final_snake_size = driver.execute_script("return (window.slither?.sct || window.snake?.sct || 0);")
+
+        # Wait for the final score element to appear and get the value
+        try:
+            final_length_elem = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#lastscore b"))
+            )
+            final_snake_size = final_length_elem.text
+        except Exception:
+            final_snake_size = "N/A"
+
         food_collected_count = driver.execute_script("return window._foodCollectedCount || 0;")
         food_blacklist_events = driver.execute_script("return window._foodBlacklistEvents || 0;")
         print(f"Your snake lived for {lifespan:.2f} seconds.")
