@@ -30,6 +30,9 @@ try:
     # Wait for game to start
     time.sleep(2)
 
+    # --- Function definitions ---
+
+
     def move_greedy_avoid_snakes():
         script = """
         let mySnake = window.slither;
@@ -42,20 +45,30 @@ try:
         // Parameters
         let dangerRadius = 200;
         let repulsionFactor = 1000;
-        let panicRadius = 80; // Panic if enemy is this close
-        let ignoreRadius = 300; // Ignore enemies farther than this
+        let panicRadius = 80;
+        let ignoreRadius = 200;
+        let tooCloseRadius = 10; // Ignore food that's too close
 
-        // Attraction to food
+        // Attraction: only toward the closest food that's not too close
+        let closestFood = null;
+        let minFoodDist = Infinity;
         for (let i = 0; i < foods.length; i++) {
             let f = foods[i];
             if (f && f.xx !== undefined && f.yy !== undefined) {
                 let dx = f.xx - myX;
                 let dy = f.yy - myY;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                let weight = 1 / (dist + 1e-5);
-                attraction.x += dx * weight;
-                attraction.y += dy * weight;
+                if (dist < minFoodDist && dist > tooCloseRadius) {
+                    minFoodDist = dist;
+                    closestFood = f;
+                }
             }
+        }
+        if (closestFood) {
+            let dx = closestFood.xx - myX;
+            let dy = closestFood.yy - myY;
+            attraction.x = dx;
+            attraction.y = dy;
         }
 
         // Repulsion from enemy snake segments & find nearest
@@ -121,7 +134,42 @@ try:
             }
         }
 
-        console.log("Nearest enemy distance:", minEnemyDist);
+        let ctx = window._botOverlayCtx;
+        ctx.clearRect(0, 0, window._botOverlay.width, window._botOverlay.height);
+
+        // Convert game coordinates to screen coordinates
+        function toScreen(x, y) {
+            let canvas = window.mc;
+            let screenX = (x - window.view_xx) * window.gsc + canvas.width / 2;
+            let screenY = (y - window.view_yy) * window.gsc + canvas.height / 2;
+            return [screenX, screenY];
+        }
+
+        let [snakeScreenX, snakeScreenY] = toScreen(myX, myY);
+
+        // Draw attraction vector
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(snakeScreenX, snakeScreenY);
+        ctx.lineTo(snakeScreenX + attraction.x * window.gsc, snakeScreenY + attraction.y * window.gsc);
+        ctx.stroke();
+
+        // Draw repulsion vector
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(snakeScreenX, snakeScreenY);
+        ctx.lineTo(snakeScreenX + repulsion.x * window.gsc, snakeScreenY + repulsion.y * window.gsc);
+        ctx.stroke();
+
+        // Draw final movement vector
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(snakeScreenX, snakeScreenY);
+        ctx.lineTo(snakeScreenX + moveX * window.gsc, snakeScreenY + moveY * window.gsc);
+        ctx.stroke();
 
         return {
             move: {x: moveX, y: moveY},
@@ -154,56 +202,158 @@ try:
         """
         return driver.execute_script(script)
 
-    def move_toward_closest_food():
+    def move_toward_food_and_avoid_snakes():
         script = """
-        let snake = window.slither;
-        let foods = window.foods || [];
-        let snake_x = snake && snake.xx;
-        let snake_y = snake && snake.yy;
-        let snake_ang = snake && snake.ang;
+        try {
+            let mySnake = window.slither || window.snake;
+            let foods = window.foods || [];
+            let allSnakes = window.slithers || [];
+            let myX = mySnake && mySnake.xx, myY = mySnake && mySnake.yy;
 
-        let min_target_dist = 30; // Increase this if needed
-        let min_dist = Infinity;
-        let target = null;
+            if (!mySnake || myX === undefined || myY === undefined) {
+                return {error: "Snake not found"};
+            }
 
-        function angleDiff(a, b) {
-            let diff = a - b;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            return Math.abs(diff);
-        }
+            // --- Food targeting with timeout/blacklist ---
+            if (!window._foodTargetState) {
+                window._foodTargetState = {lastTarget: null, lastChange: Date.now(), stuck: false, blacklist: []};
+            }
+            let state = window._foodTargetState;
 
-        for (let i = 0; i < foods.length; i++) {
-            let f = foods[i];
-            if (f && f.xx !== undefined && f.yy !== undefined) {
-                let dx = f.xx - snake_x;
-                let dy = f.yy - snake_y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist > min_target_dist) {
-                    let food_ang = Math.atan2(dy, dx);
-                    if (angleDiff(food_ang, snake_ang) < Math.PI / 2) { // within 90 degrees of heading
-                        if (dist < min_dist) {
-                            min_dist = dist;
-                            target = f;
+            // Parameters
+            let min_target_dist = 30;
+            let dangerRadius = 200;
+            let repulsionFactor = 1000;
+            let panicRadius = 80;
+            let ignoreRadius = 200;
+
+            // --- Find closest food (with blacklist logic) ---
+            let candidates = [];
+            for (let i = 0; i < foods.length; i++) {
+                let f = foods[i];
+                if (f && f.xx !== undefined && f.yy !== undefined) {
+                    let dx = f.xx - myX;
+                    let dy = f.yy - myY;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    let id = f.xx + ',' + f.yy;
+                    if (dist > min_target_dist && state.blacklist.indexOf(id) === -1) {
+                        candidates.push({food: f, dist: dist, id: id});
+                    }
+                }
+            }
+            candidates.sort((a, b) => a.dist - b.dist);
+
+            let target = null;
+            if (candidates.length > 0) {
+                target = candidates[0].food;
+            }
+
+            // Blacklist logic
+            let targetId = target ? (target.xx + ',' + target.yy) : null;
+            if (targetId !== state.lastTarget) {
+                state.lastTarget = targetId;
+                state.lastChange = Date.now();
+                state.stuck = false;
+            } else {
+                if (Date.now() - state.lastChange > 1000 && targetId) {
+                    state.stuck = true;
+                    if (state.blacklist.indexOf(targetId) === -1) {
+                        state.blacklist.push(targetId);
+                    }
+                    if (candidates.length > 1) {
+                        target = candidates[1].food;
+                        state.lastTarget = target.xx + ',' + target.yy;
+                        state.lastChange = Date.now();
+                        state.stuck = false;
+                    } else {
+                        target = null;
+                    }
+                }
+            }
+
+            // --- Attraction vector toward target food ---
+            let attraction = {x: 0, y: 0};
+            if (target) {
+                let dx = target.xx - myX;
+                let dy = target.yy - myY;
+                attraction.x = dx;
+                attraction.y = dy;
+            }
+
+            // --- Repulsion from enemy snakes ---
+            let repulsion = {x: 0, y: 0};
+            let minEnemyDist = Infinity;
+            for (let i = 0; i < allSnakes.length; i++) {
+                let s = allSnakes[i];
+                if (s && s !== mySnake && s.pts) {
+                    for (let j = 0; j < s.pts.length; j++) {
+                        let pt = s.pts[j];
+                        if (pt && pt.xx !== undefined && pt.yy !== undefined) {
+                            let dx = myX - pt.xx;
+                            let dy = myY - pt.yy;
+                            let dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist < dangerRadius) {
+                                let weight = repulsionFactor / (dist + 1e-5);
+                                repulsion.x += dx * weight;
+                                repulsion.y += dy * weight;
+                            }
+                            if (dist < minEnemyDist) {
+                                minEnemyDist = dist;
+                            }
                         }
                     }
                 }
             }
-        }
+            if (minEnemyDist > ignoreRadius) {
+                repulsion.x = 0;
+                repulsion.y = 0;
+            }
 
-        if (target) {
-            let dx = target.xx - snake_x;
-            let dy = target.yy - snake_y;
-            window.xm = dx;
-            window.ym = dy;
-            return {snake: {x: snake_x, y: snake_y, ang: snake_ang}, target: {x: target.xx, y: target.yy}, vector: {dx: dx, dy: dy}};
-        } else {
-            window.xm = 0;
-            window.ym = 0;
-            return {snake: {x: snake_x, y: snake_y, ang: snake_ang}, target: null};
+            // --- Combine attraction and repulsion ---
+            let moveX = attraction.x + repulsion.x;
+            let moveY = attraction.y + repulsion.y;
+            let mag = Math.sqrt(moveX*moveX + moveY*moveY);
+            if (mag > 0) {
+                moveX = moveX / mag * 100;
+                moveY = moveY / mag * 100;
+            }
+
+            window.xm = moveX;
+            window.ym = moveY;
+
+            // --- Panic logic for speed boost ---
+            if (minEnemyDist < panicRadius) {
+                if (typeof window.setAcceleration === "function") {
+                    window.setAcceleration(1);
+                }
+                if (!window._spaceHeld) {
+                    window._spaceHeld = true;
+                    document.body.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 32}));
+                }
+            } else {
+                if (typeof window.setAcceleration === "function") {
+                    window.setAcceleration(0);
+                }
+                if (window._spaceHeld) {
+                    window._spaceHeld = false;
+                    document.body.dispatchEvent(new KeyboardEvent('keyup', {keyCode: 32}));
+                }
+            }
+
+            // --- Return info for debugging/overlay ---
+            return {
+                move: {x: moveX, y: moveY},
+                attraction: attraction,
+                repulsion: repulsion,
+                minEnemyDist: minEnemyDist,
+                target: target,
+                stuck: state.stuck
+            };
+        } catch (e) {
+            return {error: e.toString()};
         }
         """
-        result = driver.execute_script(script)
+        return driver.execute_script(script)
 
     def log_enemy_snake_positions():
         script = """
@@ -225,28 +375,26 @@ try:
                 enemies.push({id: i, segments: segments});
             }
         }
-        console.log("Enemy snakes:", enemies); // For debugging
         return enemies;
         """
         return driver.execute_script(script)
 
+
+    # --- Now call the function ---
+
     try:
         while True:
-            result = move_greedy_avoid_snakes()
-            print("Nearest enemy distance:", result.get("minEnemyDist"))
+            try:
+                result = move_toward_food_and_avoid_snakes()
+            except Exception as e:
+                pass
             time.sleep(0.1)
 
     except KeyboardInterrupt:
-        # This catches when user presses Ctrl+C to stop the program
-        # It allows for a graceful exit instead of a crash
-        print("Stopping bot...")
+        pass
 
 except Exception as e:
-    # This catches any other errors that might occur in the main try block
-    # (like failing to find elements, JavaScript errors, etc)
-    print(f"Error: {e}")  # Print the basic error message
-    import traceback
-    print(traceback.format_exc())  # Print the full error stack trace for debugging
+    pass
 
 finally:
     # This block always runs, whether there was an error or not
