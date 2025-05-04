@@ -30,6 +30,27 @@ try:
     # Wait for game to start
     time.sleep(2)
 
+    # --- Wait until snake is present before starting timer ---
+    def is_snake_present():
+        script = "return window.slither !== null && window.slither !== undefined;"
+        return driver.execute_script(script)
+
+    while True:
+        try:
+            if is_snake_present():
+                break
+        except Exception:
+            pass
+        time.sleep(0.1)
+
+    # --- Lifespan tracking ---
+    life_start_time = time.time()  # Record the start time
+
+    def is_snake_alive():
+        # Returns True if the snake is still alive, False otherwise
+        script = "return window.slither !== null && window.slither !== undefined;"
+        return driver.execute_script(script)
+
     # --- Function definitions ---
 
 
@@ -237,11 +258,18 @@ try:
 
     try:
         while True:
+            if not is_snake_alive():
+                break  # Snake is dead, exit loop
             try:
                 result = move_toward_food_and_avoid_snakes()
             except Exception as e:
                 pass
             time.sleep(0.1)
+
+        # --- Lifespan calculation ---
+        life_end_time = time.time()
+        lifespan = life_end_time - life_start_time
+        print(f"Your snake lived for {lifespan:.2f} seconds.")
 
     except KeyboardInterrupt:
         pass
