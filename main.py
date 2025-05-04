@@ -78,6 +78,9 @@ try:
 
     def move_toward_food_and_avoid_snakes():
         script = """
+        if (window._foodCollectedCount === undefined) window._foodCollectedCount = 0;
+        if (window._lastFoodTargetId === undefined) window._lastFoodTargetId = null;
+
         try {
             let mySnake = window.slither || window.snake;
             let foods = window.foods || [];
@@ -133,6 +136,7 @@ try:
                     state.stuck = true;
                     if (state.blacklist.indexOf(targetId) === -1) {
                         state.blacklist.push(targetId);
+                        window._foodBlacklistEvents = (window._foodBlacklistEvents || 0) + 1;
                     }
                     if (candidates.length > 1) {
                         target = candidates[1].food;
@@ -224,6 +228,12 @@ try:
                 stuck: state.stuck
             };
             window._lastMoveResult = result;
+
+            if (targetId !== window._lastFoodTargetId && window._lastFoodTargetId !== null) {
+                window._foodCollectedCount += 1;
+            }
+            window._lastFoodTargetId = targetId;
+
             return result;
         } catch (e) {
             return {error: e.toString()};
@@ -409,6 +419,26 @@ try:
         """
         driver.execute_script(script)
 
+    driver.execute_script("""
+    window._lastKnownSnakeSize = 0;
+    window._foodCollected = 0;
+    window._lastSnakeLength = (window.slither || window.snake)?.sc || 0;
+    window._lastSnakeAlive = true;
+    setInterval(function() {
+        let snake = window.slither || window.snake;
+        if (snake && snake.sc !== undefined) {
+            window._lastKnownSnakeSize = snake.sc;
+            if (snake.sc > window._lastSnakeLength) {
+                window._foodCollected += (snake.sc - window._lastSnakeLength);
+            }
+            window._lastSnakeLength = snake.sc;
+            window._lastSnakeAlive = true;
+        } else {
+            window._lastSnakeAlive = false;
+        }
+    }, 100);
+    """)
+
     inject_overlay_script()
 
     # --- Now call the function ---
@@ -426,7 +456,13 @@ try:
         # --- Lifespan calculation ---
         life_end_time = time.time()
         lifespan = life_end_time - life_start_time
+        final_snake_size = driver.execute_script("return (window.slither?.sct || window.snake?.sct || 0);")
+        food_collected_count = driver.execute_script("return window._foodCollectedCount || 0;")
+        food_blacklist_events = driver.execute_script("return window._foodBlacklistEvents || 0;")
         print(f"Your snake lived for {lifespan:.2f} seconds.")
+        print(f"Final snake size: {final_snake_size}")
+        print(f"Total food collected: {food_collected_count}")
+        print(f"Food blacklist events: {food_blacklist_events}")
 
     except KeyboardInterrupt:
         pass
