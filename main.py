@@ -98,7 +98,7 @@ try:
             let min_target_dist = 30;
             let dangerRadius = 200;
             let repulsionFactor = 1000;
-            let panicRadius = 80;
+            let panicRadius = 90;
             let ignoreRadius = 200;
 
             // --- Find closest food (with blacklist logic) ---
@@ -215,7 +215,7 @@ try:
             }
 
             // --- Return info for debugging/overlay ---
-            return {
+            let result = {
                 move: {x: moveX, y: moveY},
                 attraction: attraction,
                 repulsion: repulsion,
@@ -223,6 +223,8 @@ try:
                 target: target,
                 stuck: state.stuck
             };
+            window._lastMoveResult = result;
+            return result;
         } catch (e) {
             return {error: e.toString()};
         }
@@ -253,6 +255,161 @@ try:
         """
         return driver.execute_script(script)
 
+    def inject_overlay_script():
+        script = """
+        (function() {
+            // Remove old overlay if exists
+            let old = document.getElementById('slither-bot-overlay');
+            if (old) old.remove();
+
+            // Create overlay canvas
+            let overlay = document.createElement('canvas');
+            overlay.id = 'slither-bot-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.left = '0';
+            overlay.style.top = '0';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = 10000;
+            document.body.appendChild(overlay);
+
+            function updateOverlay() {
+                let c = document.getElementById('slither-bot-overlay');
+                if (!c) return;
+                let w = window.innerWidth, h = window.innerHeight;
+                c.width = w; c.height = h;
+                let ctx = c.getContext('2d');
+                ctx.clearRect(0, 0, w, h);
+
+                // Get game variables
+                let mySnake = window.slither || window.snake;
+                let allSnakes = window.slithers || [];
+                let state = window._foodTargetState || {};
+                let target = null;
+                if (state.lastTarget) {
+                    let parts = state.lastTarget.split(',');
+                    if (parts.length === 2) {
+                        let tx = parseFloat(parts[0]), ty = parseFloat(parts[1]);
+                        target = {xx: tx, yy: ty};
+                    }
+                }
+
+                // Parameters (should match your JS logic)
+                let dangerRadius = 200;
+                let ignoreRadius = 200;
+                let panicRadius = 90;
+
+                // Camera offset
+                let view_xx = window.view_xx || 0;
+                let view_yy = window.view_yy || 0;
+                let view_ang = window.view_ang || 0;
+                let view_dist = window.gsc || 1;
+
+                // Helper: world to screen
+                function worldToScreen(wx, wy) {
+                    let cx = w/2, cy = h/2;
+                    let dx = wx - view_xx, dy = wy - view_yy;
+                    // Rotate by -view_ang
+                    let ang = -view_ang;
+                    let rx = dx * Math.cos(ang) - dy * Math.sin(ang);
+                    let ry = dx * Math.sin(ang) + dy * Math.cos(ang);
+                    // Scale
+                    rx *= view_dist; ry *= view_dist;
+                    return [cx + rx, cy + ry];
+                }
+
+                // Draw danger zone around our snake
+                if (mySnake) {
+                    let [sx, sy] = worldToScreen(mySnake.xx, mySnake.yy);
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, dangerRadius * view_dist, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(255,0,0,0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Draw panic zone around our snake
+                if (mySnake) {
+                    let [sx, sy] = worldToScreen(mySnake.xx, mySnake.yy);
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, panicRadius * view_dist, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(255,165,0,0.3)'; // orange, semi-transparent
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Draw boxes/circles around enemy snakes within ignoreRadius
+                if (mySnake) {
+                    let myX = mySnake.xx, myY = mySnake.yy;
+                    for (let i = 0; i < allSnakes.length; i++) {
+                        let s = allSnakes[i];
+                        if (s && s !== mySnake && s.pts && s.pts.length > 0) {
+                            // Find closest segment to our snake
+                            let minDist = Infinity, minPt = null;
+                            for (let j = 0; j < s.pts.length; j++) {
+                                let pt = s.pts[j];
+                                if (pt && pt.xx !== undefined && pt.yy !== undefined) {
+                                    let dx = myX - pt.xx;
+                                    let dy = myY - pt.yy;
+                                    let dist = Math.sqrt(dx*dx + dy*dy);
+                                    if (dist < minDist) {
+                                        minDist = dist;
+                                        minPt = pt;
+                                    }
+                                }
+                            }
+                            if (minDist < ignoreRadius) {
+                                // Draw a red box around the closest segment
+                                let [ex, ey] = worldToScreen(minPt.xx, minPt.yy);
+                                ctx.save();
+                                ctx.strokeStyle = 'red';
+                                ctx.lineWidth = 2;
+                                ctx.beginPath();
+                                ctx.rect(ex - 10, ey - 10, 20, 20);
+                                ctx.stroke();
+                                ctx.restore();
+                            }
+                        }
+                    }
+                }
+
+                // Draw attraction/repulsion/move vectors
+                if (window._lastMoveResult && mySnake) {
+                    let [sx, sy] = worldToScreen(mySnake.xx, mySnake.yy);
+                    let mv = window._lastMoveResult;
+
+                    // Attraction (blue)
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + mv.attraction.x, sy + mv.attraction.y);
+                    ctx.strokeStyle = 'blue';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Repulsion (red)
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + mv.repulsion.x, sy + mv.repulsion.y);
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Final move (orange)
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + mv.move.x, sy + mv.move.y);
+                    ctx.strokeStyle = 'orange';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+                requestAnimationFrame(updateOverlay);
+            }
+            updateOverlay();
+        })();
+        """
+        driver.execute_script(script)
+
+    inject_overlay_script()
 
     # --- Now call the function ---
 
