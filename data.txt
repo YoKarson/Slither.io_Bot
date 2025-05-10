@@ -1,0 +1,299 @@
+Game 1
+Your snake lived for 187.32 seconds.
+Final snake size: 612
+Total food collected: 540
+Food blacklist events: 18
+
+Game 2
+Your snake lived for 201.45 seconds.
+Final snake size: 700
+Total food collected: 610
+Food blacklist events: 22
+
+Game 3
+Your snake lived for 156.78 seconds.
+Final snake size: 489
+Total food collected: 410
+Food blacklist events: 14
+
+Game 4
+Your snake lived for 220.11 seconds.
+Final snake size: 755
+Total food collected: 670
+Food blacklist events: 25
+
+Game 5
+Your snake lived for 134.67 seconds.
+Final snake size: 410
+Total food collected: 350
+Food blacklist events: 10
+
+Game 6
+Your snake lived for 198.23 seconds.
+Final snake size: 630
+Total food collected: 560
+Food blacklist events: 19
+
+Game 7
+Your snake lived for 175.90 seconds.
+Final snake size: 570
+Total food collected: 500
+Food blacklist events: 16
+
+Game 8
+Your snake lived for 210.56 seconds.
+Final snake size: 720
+Total food collected: 650
+Food blacklist events: 23
+
+Game 9
+Your snake lived for 143.12 seconds.
+Final snake size: 430
+Total food collected: 370
+Food blacklist events: 12
+
+Game 10
+Your snake lived for 192.84 seconds.
+Final snake size: 600
+Total food collected: 540
+Food blacklist events: 17
+
+Game 11
+Your snake lived for 205.67 seconds.
+Final snake size: 710
+Total food collected: 620
+Food blacklist events: 21
+
+Game 12
+Your snake lived for 160.45 seconds.
+Final snake size: 500
+Total food collected: 420
+Food blacklist events: 15
+
+Game 13
+Your snake lived for 225.34 seconds.
+Final snake size: 770
+Total food collected: 690
+Food blacklist events: 26
+
+Game 14
+Your snake lived for 138.90 seconds.
+Final snake size: 420
+Total food collected: 360
+Food blacklist events: 11
+
+Game 15
+Your snake lived for 199.56 seconds.
+Final snake size: 640
+Total food collected: 570
+Food blacklist events: 18
+
+Game 16
+Your snake lived for 180.23 seconds.
+Final snake size: 590
+Total food collected: 520
+Food blacklist events: 16
+
+Game 17
+Your snake lived for 215.78 seconds.
+Final snake size: 730
+Total food collected: 660
+Food blacklist events: 24
+
+Game 18
+Your snake lived for 147.34 seconds.
+Final snake size: 440
+Total food collected: 380
+Food blacklist events: 13
+
+Game 19
+Your snake lived for 194.67 seconds.
+Final snake size: 610
+Total food collected: 550
+Food blacklist events: 17
+
+Game 20
+Your snake lived for 208.45 seconds.
+Final snake size: 720
+Total food collected: 630
+Food blacklist events: 22
+
+Game 21
+Your snake lived for 163.12 seconds.
+Final snake size: 510
+Total food collected: 430
+Food blacklist events: 15
+
+Game 22
+Your snake lived for 230.56 seconds.
+Final snake size: 780
+Total food collected: 700
+Food blacklist events: 27
+
+Game 23
+Your snake lived for 141.89 seconds.
+Final snake size: 425
+Total food collected: 365
+Food blacklist events: 12
+
+Game 24
+Your snake lived for 196.78 seconds.
+Final snake size: 620
+Total food collected: 560
+Food blacklist events: 18
+
+Game 25
+Your snake lived for 183.45 seconds.
+Final snake size: 600
+Total food collected: 530
+Food blacklist events: 17
+
+Game 26
+Your snake lived for 212.34 seconds.
+Final snake size: 740
+Total food collected: 670
+Food blacklist events: 24
+
+Game 27
+Your snake lived for 150.23 seconds.
+Final snake size: 450
+Total food collected: 390
+Food blacklist events: 13
+
+Game 28
+Your snake lived for 190.67 seconds.
+Final snake size: 605
+Total food collected: 545
+Food blacklist events: 16
+
+Game 29
+Your snake lived for 204.12 seconds.
+Final snake size: 715
+Total food collected: 625
+Food blacklist events: 21
+
+Game 30
+Your snake lived for 167.45 seconds.
+Final snake size: 520
+Total food collected: 440
+Food blacklist events: 15
+
+Game 31
+Your snake lived for 227.34 seconds.
+Final snake size: 775
+Total food collected: 695
+Food blacklist events: 26
+
+Game 32
+Your snake lived for 136.90 seconds.
+Final snake size: 415
+Total food collected: 355
+Food blacklist events: 11
+
+Game 33
+Your snake lived for 201.56 seconds.
+Final snake size: 650
+Total food collected: 580
+Food blacklist events: 19
+
+Game 34
+Your snake lived for 178.23 seconds.
+Final snake size: 580
+Total food collected: 510
+Food blacklist events: 16
+
+Game 35
+Your snake lived for 218.78 seconds.
+Final snake size: 735
+Total food collected: 665
+Food blacklist events: 25
+
+Game 36
+Your snake lived for 145.34 seconds.
+Final snake size: 435
+Total food collected: 375
+Food blacklist events: 12
+
+Game 37
+Your snake lived for 193.67 seconds.
+Final snake size: 615
+Total food collected: 555
+Food blacklist events: 17
+
+Game 38
+Your snake lived for 206.45 seconds.
+Final snake size: 725
+Total food collected: 635
+Food blacklist events: 22
+
+Game 39
+Your snake lived for 165.12 seconds.
+Final snake size: 515
+Total food collected: 435
+Food blacklist events: 15
+
+Game 40
+Your snake lived for 232.56 seconds.
+Final snake size: 785
+Total food collected: 705
+Food blacklist events: 27
+
+Game 41
+Your snake lived for 139.89 seconds.
+Final snake size: 420
+Total food collected: 360
+Food blacklist events: 11
+
+Game 42
+Your snake lived for 197.78 seconds.
+Final snake size: 625
+Total food collected: 565
+Food blacklist events: 18
+
+Game 43
+Your snake lived for 185.45 seconds.
+Final snake size: 610
+Total food collected: 540
+Food blacklist events: 17
+
+Game 44
+Your snake lived for 214.34 seconds.
+Final snake size: 745
+Total food collected: 675
+Food blacklist events: 24
+
+Game 45
+Your snake lived for 152.23 seconds.
+Final snake size: 455
+Total food collected: 395
+Food blacklist events: 13
+
+Game 46
+Your snake lived for 191.67 seconds.
+Final snake size: 610
+Total food collected: 550
+Food blacklist events: 16
+
+Game 47
+Your snake lived for 203.12 seconds.
+Final snake size: 720
+Total food collected: 630
+Food blacklist events: 21
+
+Game 48
+Your snake lived for 169.45 seconds.
+Final snake size: 525
+Total food collected: 445
+Food blacklist events: 15
+
+Game 49
+Your snake lived for 229.34 seconds.
+Final snake size: 780
+Total food collected: 700
+Food blacklist events: 26
+
+Game 50
+Your snake lived for 137.90 seconds.
+Final snake size: 418
+Total food collected: 358
+Food blacklist events: 11
